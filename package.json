@@ -1,0 +1,26 @@
+{
+  "name": "syp-react-template",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Template base de Solutions & Payroll para proyectos React",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "pdf-lib": "^1.17.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-pdf": "^10.4.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^6.0.3",
+    "vite": "^5.0.8"
+  }
+}
