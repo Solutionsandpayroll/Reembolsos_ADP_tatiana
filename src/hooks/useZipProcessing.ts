@@ -1,19 +1,15 @@
 /**
  * Hook que orquesta el procesamiento completo de ZIPs.
  *
- * Flujo:
- *   idle → loading → extracting → done
- *
- * Etapa 2: Carga de ZIP con validación y detección de estructura.
- * Etapa 3: Extracción recursiva de imágenes con estadísticas y progreso.
+ * Flujo: idle → loading → extracting → done
  */
 
 import { useState, useCallback } from 'react'
-import type { ProcessingProgress, ImageFile, ExtractionStats } from '../types'
+import type { ProcessingProgress, PageSource, ExtractionStats } from '../types'
 import { INITIAL_PROGRESS } from '../types'
 import {
   loadZip,
-  extractImagesRecursive,
+  extractSourcesRecursive,
   createExtractionStats,
   type ZipLoadResult,
   type ZipLoadError,
@@ -26,7 +22,7 @@ interface ExtractionWarning {
 
 export function useZipProcessing() {
   const [progress, setProgress] = useState<ProcessingProgress>(INITIAL_PROGRESS)
-  const [images, setImages] = useState<ImageFile[]>([])
+  const [sources, setSources] = useState<PageSource[]>([])
   const [loadResults, setLoadResults] = useState<ZipLoadResult[]>([])
   const [loadErrors, setLoadErrors] = useState<ZipLoadError[]>([])
   const [extractionWarnings, setExtractionWarnings] = useState<ExtractionWarning[]>([])
@@ -39,11 +35,11 @@ export function useZipProcessing() {
     setLoadErrors([])
     setExtractionWarnings([])
     setExtractionStats(null)
-    setImages([])
+    setSources([])
 
     const results: ZipLoadResult[] = []
     const errors: ZipLoadError[] = []
-    const allImages: ImageFile[] = []
+    const allSources: PageSource[] = []
     const warnings: ExtractionWarning[] = []
 
     // ── Fase 1: Carga ──────────────────────────────────────────────
@@ -85,7 +81,7 @@ export function useZipProcessing() {
 
     setProgress({
       step: 'extracting',
-      message: 'Iniciando extracción de imágenes...',
+      message: 'Iniciando extracción...',
       current: 0,
       total: results.length,
     })
@@ -99,47 +95,43 @@ export function useZipProcessing() {
     }
 
     try {
-      for (let zipIdx = 0; zipIdx < results.length; zipIdx++) {
-        const result = results[zipIdx]
-
-        const extracted = await extractImagesRecursive(
+      for (const result of results) {
+        const extracted = await extractSourcesRecursive(
           result.zip,
           stats,
           (extProgress) => {
+            const total = extProgress.imagesExtracted + extProgress.pdfsExtracted
             setProgress({
               step: 'extracting',
-              message: `${extProgress.imagesExtracted} imagen${extProgress.imagesExtracted !== 1 ? 'es' : ''} encontrada${extProgress.imagesExtracted !== 1 ? 's' : ''}...`,
-              current: extProgress.imagesExtracted,
-              total: Math.max(extProgress.imagesExtracted, stats.totalImages),
+              message: `${total} archivo${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}...`,
+              current: total,
+              total: Math.max(total, 1),
             })
           }
         )
 
-        allImages.push(...extracted)
-        setImages([...allImages])
+        allSources.push(...extracted)
+        setSources([...allSources])
       }
 
-      // Procesar warnings capturados de la consola
       for (const warn of capturedWarnings) {
         const match = warn.match(/ZIP anidado (corrupto|vacío).*?: (.+)/)
         if (match) {
-          warnings.push({
-            fileName: match[2].split(' — ')[0],
-            warning: match[0],
-          })
+          warnings.push({ fileName: match[2].split(' — ')[0], warning: match[0] })
         }
       }
 
       setExtractionWarnings(warnings)
       setExtractionStats({ ...stats })
-      setImages(allImages)
+      setSources(allSources)
 
-      const imageWord = allImages.length === 1 ? 'imagen' : 'imágenes'
+      const totalPages = stats.totalImages + stats.totalPdfPages
+      const sourceCount = allSources.length
       setProgress({
         step: 'done',
-        message: `${allImages.length} ${imageWord} encontrada${allImages.length !== 1 ? 's' : ''} en ${results.length} ZIP${results.length !== 1 ? 's' : ''}`,
-        current: allImages.length,
-        total: allImages.length,
+        message: `${sourceCount} archivo${sourceCount !== 1 ? 's' : ''} · ${totalPages} página${totalPages !== 1 ? 's' : ''} total${totalPages !== 1 ? 'es' : ''}`,
+        current: sourceCount,
+        total: sourceCount,
       })
     } finally {
       console.warn = originalConsoleWarn
@@ -148,7 +140,7 @@ export function useZipProcessing() {
 
   const reset = useCallback(() => {
     setProgress(INITIAL_PROGRESS)
-    setImages([])
+    setSources([])
     setLoadResults([])
     setLoadErrors([])
     setExtractionWarnings([])
@@ -158,7 +150,7 @@ export function useZipProcessing() {
 
   return {
     progress,
-    images,
+    sources,
     loadResults,
     loadErrors,
     extractionStats,

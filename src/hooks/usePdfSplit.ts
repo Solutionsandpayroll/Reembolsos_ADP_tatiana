@@ -1,22 +1,11 @@
 /**
  * Hook que gestiona la selección de páginas y división del PDF.
- *
- * Flujo de división:
- *   idle → splitting → done
- *
- * Los PDFs se descargan secuencialmente con una pausa entre cada uno
- * para evitar que el navegador bloquee la segunda descarga.
  */
 
 import { useState, useCallback } from 'react'
-import type { PdfPageInfo, ProcessingProgress, ImageFile, SplitResult } from '../types'
+import type { PdfPageInfo, PageMetadata, ProcessingProgress, SplitResult } from '../types'
 import { INITIAL_PROGRESS } from '../types'
 import { splitPdf, downloadPdfsSequential } from '../services/pdfService'
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
 
 export function usePdfSplit() {
   const [pages, setPages] = useState<PdfPageInfo[]>([])
@@ -24,13 +13,19 @@ export function usePdfSplit() {
   const [splitResult, setSplitResult] = useState<SplitResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const initPages = useCallback((images: ImageFile[]) => {
-    const pageInfos: PdfPageInfo[] = images.map((img, index) => ({
-      index,
-      imagePath: img.path,
-      imageFilename: img.filename,
-      selected: true,
-    }))
+  const initPages = useCallback((metadata: PageMetadata[]) => {
+    const pageInfos: PdfPageInfo[] = metadata.map((meta) => {
+      let filename = meta.sourceFilename
+      if (meta.sourceType === 'pdf' && meta.sourcePage && meta.sourceTotalPages) {
+        filename = `${meta.sourceFilename} (pág. ${meta.sourcePage} de ${meta.sourceTotalPages})`
+      }
+      return {
+        index: meta.index,
+        imagePath: meta.sourcePath,
+        imageFilename: filename,
+        selected: true,
+      }
+    })
     setPages(pageInfos)
   }, [])
 
@@ -55,9 +50,6 @@ export function usePdfSplit() {
     const selectedIndices = new Set(
       pages.filter((p) => p.selected).map((p) => p.index)
     )
-
-    const selectedCount = selectedIndices.size
-    const remainingCount = pages.length - selectedCount
 
     setProgress({
       step: 'splitting',
@@ -93,7 +85,6 @@ export function usePdfSplit() {
           filename: `reembolsos-seleccionados-${result.pageCountA}-pag.pdf`,
         })
       }
-
       if (result.pageCountB > 0) {
         downloads.push({
           bytes: result.pdfB,

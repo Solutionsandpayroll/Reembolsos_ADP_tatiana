@@ -1,24 +1,39 @@
 export interface ImageFile {
-  /** Ruta original dentro del ZIP */
   path: string
-  /** Nombre del archivo (sin ruta) */
   filename: string
-  /** Buffer con los datos binarios de la imagen */
   buffer: ArrayBuffer
-  /** Tamaño en bytes */
   size: number
-  /** Profundidad en la estructura del ZIP (0 = raíz) */
   depth: number
 }
 
+export interface PdfSourceFile {
+  path: string
+  filename: string
+  buffer: ArrayBuffer
+  size: number
+  depth: number
+  pageCount: number
+}
+
+export type PageSource = ImageFile | PdfSourceFile
+
+export function isPdfSource(source: PageSource): source is PdfSourceFile {
+  return 'pageCount' in source
+}
+
+export interface PageMetadata {
+  index: number
+  sourceFilename: string
+  sourcePath: string
+  sourceType: 'image' | 'pdf'
+  sourcePage?: number
+  sourceTotalPages?: number
+}
+
 export interface ZipStructure {
-  /** Rutas completas de todos los archivos */
   files: string[]
-  /** Rutas de todas las carpetas */
   folders: string[]
-  /** Rutas de ZIPs anidados encontrados */
   nestedZips: string[]
-  /** Rutas de imágenes encontradas directamente */
   images: string[]
 }
 
@@ -27,6 +42,8 @@ export interface ExtractionStats {
   totalFolders: number
   totalNestedZips: number
   totalImages: number
+  totalPdfs: number
+  totalPdfPages: number
   maxDepth: number
 }
 

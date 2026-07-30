@@ -16,7 +16,7 @@ export default function App() {
 
   const {
     progress: zipProgress,
-    images,
+    sources,
     loadResults,
     loadErrors,
     extractionStats,
@@ -28,7 +28,9 @@ export default function App() {
 
   const {
     pdfBytes,
+    pagesMetadata,
     progress: pdfProgress,
+    generationErrors,
     error: pdfError,
     generate,
     reset: resetPdf,
@@ -64,17 +66,17 @@ export default function App() {
   }, [files, processFiles])
 
   useEffect(() => {
-    if (zipProgress.step === 'done' && images.length > 0) {
-      generate(images)
+    if (zipProgress.step === 'done' && sources.length > 0) {
+      generate(sources)
     }
-  }, [zipProgress.step, images, generate])
+  }, [zipProgress.step, sources, generate])
 
   useEffect(() => {
-    if (pdfProgress.step === 'preview' && pdfBytes) {
-      initPages(images)
+    if (pdfProgress.step === 'preview' && pdfBytes && pagesMetadata.length > 0) {
+      initPages(pagesMetadata)
       setActiveStep('pages')
     }
-  }, [pdfProgress.step, pdfBytes, images, initPages])
+  }, [pdfProgress.step, pdfBytes, pagesMetadata, initPages])
 
   const handleGenerateSplit = useCallback(() => {
     if (!pdfBytes) return
@@ -109,6 +111,8 @@ export default function App() {
   const displayError = zipError || pdfError || splitError
   const showUploadSection = activeStep === 'upload' && !isProcessing
   const showProcessingSection = activeStep === 'upload' && isProcessing
+
+  const hasStats = extractionStats && (extractionStats.totalImages > 0 || extractionStats.totalPdfs > 0)
 
   return (
     <div className="app">
@@ -157,7 +161,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Paso 1: Carga de archivos (antes de procesar) */}
           {showUploadSection && (
             <>
               <FileUploader
@@ -173,7 +176,6 @@ export default function App() {
             </>
           )}
 
-          {/* Procesamiento en curso */}
           {showProcessingSection && (
             <div className="processing-section">
               <FileList
@@ -210,22 +212,24 @@ export default function App() {
                 </div>
               )}
 
-              {extractionStats && extractionStats.totalImages > 0 && (
+              {hasStats && (
                 <div className="extraction-stats">
                   <div className="extraction-stat">
-                    <span className="extraction-stat-value">{extractionStats.totalImages}</span>
+                    <span className="extraction-stat-value">{extractionStats!.totalImages}</span>
                     <span className="extraction-stat-label">imágenes</span>
                   </div>
                   <div className="extraction-stat">
-                    <span className="extraction-stat-value">{extractionStats.totalNestedZips}</span>
-                    <span className="extraction-stat-label">ZIPs anidados</span>
+                    <span className="extraction-stat-value">{extractionStats!.totalPdfs}</span>
+                    <span className="extraction-stat-label">PDFs</span>
                   </div>
                   <div className="extraction-stat">
-                    <span className="extraction-stat-value">{extractionStats.totalFolders}</span>
-                    <span className="extraction-stat-label">carpetas</span>
+                    <span className="extraction-stat-value">
+                      {extractionStats!.totalImages + extractionStats!.totalPdfPages}
+                    </span>
+                    <span className="extraction-stat-label">páginas totales</span>
                   </div>
                   <div className="extraction-stat">
-                    <span className="extraction-stat-value">{extractionStats.maxDepth}</span>
+                    <span className="extraction-stat-value">{extractionStats!.maxDepth}</span>
                     <span className="extraction-stat-label">niveles máx.</span>
                   </div>
                 </div>
@@ -245,10 +249,24 @@ export default function App() {
                   ))}
                 </div>
               )}
+
+              {generationErrors.length > 0 && (
+                <div className="generation-errors">
+                  {generationErrors.map((e, i) => (
+                    <p key={i} className="generation-error">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="15" y1="9" x2="9" y2="15" />
+                        <line x1="9" y1="9" x2="15" y2="15" />
+                      </svg>
+                      <strong>{e.filename}</strong>: {e.error}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Paso 2: Selección de páginas */}
           {activeStep === 'pages' && pdfBytes && (
             <PdfViewer
               pdfBytes={pdfBytes}
@@ -262,7 +280,6 @@ export default function App() {
             />
           )}
 
-          {/* Paso 3: Resultado */}
           {activeStep === 'result' && (
             <div className="result-section">
               <div className="card">

@@ -1651,6 +1651,34 @@ svg.spinner {
   color: #f59e0b;
 }
 
+/* ─── Generation Errors ───────────────────────────────────────────────────── */
+
+.generation-errors {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.generation-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.813rem;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+}
+
+.generation-error svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #dc2626;
+}
+
 /* ─── Result Section ──────────────────────────────────────────────────────── */
 
 .result-section {
